@@ -1,22 +1,22 @@
-from typing import IO
 from flask import Flask, request, jsonify, send_file, send_from_directory
 import subprocess
 import os
 import pandas as pd
-from io import BytesIO  # Add import for BytesIO
+from io import BytesIO
 
 app = Flask(__name__)
 
+# Serving the Command Runner HTML page
 @app.route('/')
 def command_runner_page():
-    # Serve the command runner HTML page
     return send_from_directory('static', 'index.html')
 
+# Serving the BLE connection HTML page
 @app.route('/connect')
 def ble_connect_page():
-    # Serve the BLE connection page
     return send_from_directory('static', 'ble_connect.html')
 
+# Endpoint to run commands based on the passed request
 @app.route('/run-command', methods=['POST'])
 def run_command():
     data = request.json
@@ -42,7 +42,7 @@ def run_command():
     else:
         return jsonify({"error": "Unknown command"}), 400
 
-    # Simulate running the command (you can replace this with actual logic)
+    # Run the command using subprocess
     process = subprocess.Popen(command_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     terminal_output = ""
     filtered_output = ""
@@ -60,12 +60,12 @@ def run_command():
         'filteredOutput': filtered_output
     })
 
+# Endpoint to export filtered data to Excel
 @app.route('/export-to-excel', methods=['POST'])
 def export_to_excel():
     data = request.json
     filtered_data = data.get('data').splitlines()
 
-    # Check if there's any filtered data
     if not filtered_data:
         return jsonify({"error": "No data to export"}), 400
 
@@ -73,19 +73,18 @@ def export_to_excel():
     df = pd.DataFrame(filtered_data, columns=["Filtered Data"])
 
     # Save the data to an Excel file in memory
-    output = BytesIO()  # Use BytesIO for in-memory file
+    output = BytesIO()
     df.to_excel(output, index=False)
     output.seek(0)
 
-    # Return the file as an attachment for download
     return send_file(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", as_attachment=True, download_name="filtered_output.xlsx")
 
 def filter_rx_tx(log_data, command):
     # Simple filtering logic based on the command
-    # For simplicity, filtering out "RX" and "TX" in this example
     if "RX" not in log_data and "TX" not in log_data:
         return log_data
     return ""
 
+# Run the app
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=5500)
