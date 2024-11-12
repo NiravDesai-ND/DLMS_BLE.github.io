@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLE Device Connection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .status {
+            margin-top: 20px;
+            font-size: 16px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="header">BLE Device Connection</h1>
+
+        <button class="button" id="connectButton">Connect to BLE Device</button>
+
+        <div id="status" class="status">Please connect to a BLE device.</div>
+    </div>
+
+    <script>
+        const SERVICE_UUID = 'f000c0c0-0451-4000-b000-000000000000';
+        const READ_CHARACTERISTIC_UUID = 'f000c0c2-0451-4000-b000-000000000000';
+        const WRITE_CHARACTERISTIC_UUID = 'f000c0c1-0451-4000-b000-000000000000';
+
+        document.getElementById("connectButton").addEventListener("click", async function() {
+            try {
+                // Request Bluetooth device with specific service UUID
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: [SERVICE_UUID] }] // Filter by service UUID
+                });
+
+                document.getElementById("status").innerText = `Connected to ${device.name}`;
+
+                // Connect to the device's GATT server
+                const server = await device.gatt.connect();
+
+                // Get the primary service
+                const service = await server.getPrimaryService(SERVICE_UUID);
+
+                // Get the read and write characteristics
+                const readCharacteristic = await service.getCharacteristic(READ_CHARACTERISTIC_UUID);
+                const writeCharacteristic = await service.getCharacteristic(WRITE_CHARACTERISTIC_UUID);
+
+                // Here you can read/write to the device as needed
+                // Example: Read data from the device
+                const value = await readCharacteristic.readValue();
+                console.log('Read Value:', new TextDecoder().decode(value));
+
+                // After successful connection, redirect to the command runner page
+                setTimeout(function() {
+                    window.location.href = "http://127.0.0.1:5500";  // Redirect to command runner page
+                }, 1000);  // Wait a second before redirecting
+
+            } catch (error) {
+                console.error("Bluetooth connection failed:", error);
+                document.getElementById("status").innerText = "Failed to connect. Try again.";
+            }
+        });
+    </script>
+</body>
+</html>

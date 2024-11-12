@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLE Device Scanner and Command Runner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        select, input, button {
+            padding: 10px;
+            width: 100%;
+            font-size: 16px;
+        }
+        .output {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            background-color: #f5f5f5;
+        }
+        #deviceList {
+            list-style-type: none;
+            padding: 0;
+        }
+        #deviceList li {
+            background-color: #f1f1f1;
+            margin: 5px 0;
+            padding: 10px;
+            cursor: pointer;
+        }
+        #statusMessage {
+            color: green;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="header">BLE Device Scanner and Command Runner</h1>
+
+        <div class="form-group">
+            <label for="comPort">COM Port:</label>
+            <input type="text" id="comPort" placeholder="Enter COM Port">
+        </div>
+
+        <div class="form-group">
+            <label for="command">Select Command:</label>
+            <select id="command">
+                <option value="Clock">Clock</option>
+                <option value="Asocisecallocical">Asocisecallocical</option>
+                <option value="Data">Data</option>
+                <option value="PC ALL">PC ALL</option>
+                <option value="US ALL">US ALL</option>
+                <option value="Energy">Energy</option>
+            </select>
+        </div>
+
+        <button id="scanBleBtn">Scan for BLE Devices</button>
+        <h2>Available BLE Devices</h2>
+        <ul id="deviceList"></ul>
+
+        <button id="runCommandBtn">Run Command</button>
+        <button id="exportBtn">Export to Excel</button>
+
+        <!-- New "Send" Button for BLE -->
+        <button id="sendDataBtn">Send Data via BLE</button>
+
+        <div id="statusMessage"></div>
+
+        <h2>Terminal Output</h2>
+        <div id="terminalOutput" class="output"></div>
+
+        <h2>Filtered Output</h2>
+        <div id="filteredOutput" class="output"></div>
+    </div>
+
+    <script>
+        // BLE UUIDs (for future reference)
+        const SERVICE_UUID = 'f000c0c0-0451-4000-b000-000000000000'; // Example service UUID
+        const WRITE_CHARACTERISTIC_UUID = 'f000c0c1-0451-4000-b000-000000000000'; // Example characteristic UUID
+
+        let bleDevice = null;
+        let bleServer = null;
+        let writeCharacteristic = null;
+
+        // Handle BLE scan and connect
+        document.getElementById("scanBleBtn").addEventListener("click", async function() {
+            try {
+                // Start scanning for all available BLE devices (no specific service UUID filter)
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,  // Accept any BLE device
+                    optionalServices: [SERVICE_UUID]  // Optionally we can request services, but this is optional
+                });
+
+                // Populate device list
+                const deviceList = document.getElementById("deviceList");
+                deviceList.innerHTML = ''; // Clear previous list
+
+                // Add device to the list
+                const listItem = document.createElement('li');
+                listItem.textContent = device.name || 'Unnamed Device';
+                listItem.addEventListener('click', () => {
+                    connectToDevice(device);
+                });
+                deviceList.appendChild(listItem);
+
+                console.log("Scanning complete. Device found: ", device.name);
+                alert(`Found device: ${device.name}`);
+            } catch (error) {
+                console.error('Error scanning for BLE devices:', error);
+                alert('Failed to scan for BLE devices');
+            }
+        });
+
+        // Connect to the selected BLE device
+        async function connectToDevice(device) {
+            try {
+                // Connect to the selected device
+                bleDevice = device;
+                bleServer = await bleDevice.gatt.connect();
+
+                // Get the write characteristic from the service
+                const service = await bleServer.getPrimaryService(SERVICE_UUID);
+                writeCharacteristic = await service.getCharacteristic(WRITE_CHARACTERISTIC_UUID);
+
+                // Successfully connected
+                document.getElementById("statusMessage").textContent = "Connected to BLE device: " + bleDevice.name;
+                console.log("Connected to the device:", bleDevice.name);
+            } catch (error) {
+                console.error('Error connecting to the device:', error);
+                alert('Failed to connect to the device');
+                document.getElementById("statusMessage").textContent = "Failed to connect to the device";
+            }
+        }
+
+        // Send data via BLE when the "Send" button is clicked
+        document.getElementById("sendDataBtn").addEventListener("click", async function() {
+            if (writeCharacteristic) {
+                try {
+                    // Define the data to send (e.g., "Tx: data intraminal")
+                    const dataToSend = "Tx: data intraminal";
+                    const data = new TextEncoder().encode(dataToSend);
+
+                    // Write the data to the BLE device
+                    await writeCharacteristic.writeValue(data);
+                    console.log("Data sent to BLE device:", dataToSend);
+                    alert("Data sent to BLE device: " + dataToSend);
+                } catch (error) {
+                    console.error('Error sending data to BLE device:', error);
+                    alert('Failed to send data to the BLE device');
+                }
+            } else {
+                alert('No BLE device connected');
+            }
+        });
+
+        // Run Command (Independent of BLE)
+        document.getElementById("runCommandBtn").addEventListener("click", async function() {
+            const comPort = document.getElementById("comPort").value;
+            const command = document.getElementById("command").value;
+
+            try {
+                // If BLE is connected, send the command to the BLE device
+                if (writeCharacteristic) {
+                    const data = new TextEncoder().encode(command);
+                    await writeCharacteristic.writeValue(data);
+                    console.log("Command sent to BLE device:", command);
+                } else {
+                    console.log("No BLE device connected. Running command on the server.");
+                }
+
+                // Fetch terminal output (simulating server-side command execution)
+                const result = await fetch('http://127.0.0.1:5500/run-command', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ comPort, command })
+                });
+
+                const resultJson = await result.json();
+                if (resultJson.terminalOutput) {
+                    document.getElementById("terminalOutput").innerText = resultJson.terminalOutput;
+                    document.getElementById("filteredOutput").innerText = resultJson.filteredOutput;
+                } else {
+                    alert('Error: ' + resultJson.error);
+                }
+            } catch (error) {
+                console.error('Error running command:', error);
+                alert('Failed to run command');
+            }
+        });
+
+        // Export to Excel
+        document.getElementById("exportBtn").addEventListener("click", async function() {
+            const filteredData = document.getElementById("filteredOutput").innerText;
+
+            try {
+                const response = await fetch('http://127.0.0.1:5500/export-to-excel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ data: filteredData })
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.style.display = "none";
+                    a.href = url;
+                    a.download = "filtered_output.xlsx";
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    alert('Error exporting to Excel');
+                }
+            } catch (error) {
+                console.error('Error exporting to Excel:', error);
+                alert('Failed to export to Excel');
+            }
+        });
+    </script>
+</body>
+</html>
