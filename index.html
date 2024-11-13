@@ -154,44 +154,14 @@
             }
         }
 
-        // Send data via BLE when the "Send" button is clicked
-        document.getElementById("sendDataBtn").addEventListener("click", async function() {
-            if (writeCharacteristic) {
-                try {
-                    // Define the data to send (e.g., "Tx: data intraminal")
-                    const dataToSend = "Tx: data intraminal";
-                    const data = new TextEncoder().encode(dataToSend);
-
-                    // Write the data to the BLE device
-                    await writeCharacteristic.writeValue(data);
-                    console.log("Data sent to BLE device:", dataToSend);
-                    alert("Data sent to BLE device: " + dataToSend);
-                } catch (error) {
-                    console.error('Error sending data to BLE device:', error);
-                    alert('Failed to send data to the BLE device');
-                }
-            } else {
-                alert('No BLE device connected');
-            }
-        });
-
         // Run Command (Independent of BLE)
         document.getElementById("runCommandBtn").addEventListener("click", async function() {
             const comPort = document.getElementById("comPort").value;
             const command = document.getElementById("command").value;
 
             try {
-                // If BLE is connected, send the command to the BLE device
-                if (writeCharacteristic) {
-                    const data = new TextEncoder().encode(command);
-                    await writeCharacteristic.writeValue(data);
-                    console.log("Command sent to BLE device:", command);
-                } else {
-                    console.log("No BLE device connected. Running command on the server.");
-                }
-
                 // Fetch terminal output (simulating server-side command execution)
-                const result = await fetch('http://127.0.0.1:5500/run-command', {
+                const result = await fetch('/run-command', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -217,7 +187,7 @@
             const filteredData = document.getElementById("filteredOutput").innerText;
 
             try {
-                const response = await fetch('http://127.0.0.1:5500/export-to-excel', {
+                const response = await fetch('/export-to-excel', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
